@@ -1,0 +1,7 @@
+hazard_type,severity,zone,description,probability,impact
+Fall Hazard,Critical,Scaffolding Tower,Unanchored lifeline wire on 22nd floor.,4,5
+Machinery Failure,High,Crane & Rigging Yard,Tower Crane cable fraying detected during inspection.,3,4
+Electrical Exposure,High,Electrical Room,Open high-voltage junction box without lock-out tag.,4,4
+Flooding & Mudslide,Critical,Excavation Zone,Rainstorm runoff flooding deep trench wall.,5,5
+Structural Formwork,Medium,High-Altitude Slab,Loose joist support pins on level 12 slab pouring.,3,3
+Environmental Dust,Low,Perimeter Fencing,Silica dust cloud near concrete grinding zone.,2,2
