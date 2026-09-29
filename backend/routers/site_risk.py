@@ -9,7 +9,8 @@ from backend.schemas.site_risk_schemas import (
     SiteRiskResponse,
     SiteRiskScoreResponse,
     HeatmapMatrixResponse,
-    SiteRiskUpdateStatus
+    SiteRiskUpdateStatus,
+    DigitalTwinResponse
 )
 
 router = APIRouter(prefix="/api/site-risk", tags=["Site Risk Agent"])
@@ -50,15 +51,26 @@ def get_site_risk_heatmap(project_id: int, db: Session = Depends(get_db)):
     """
     GET /api/site-risk/{project_id}/heatmap
     Returns 5x5 Probability x Impact Risk Heatmap matrix for both Inherent and Residual risk.
-    Grid axes:
-    Probability: Almost Certain, Likely, Possible, Unlikely, Rare
-    Impact: Negligible, Minor, Moderate, Major, Catastrophic
     """
     try:
         heatmap_data = agent.generate_heatmap(db, project_id)
         return heatmap_data
     except ValueError as ve:
         raise HTTPException(status_code=404, detail=str(ve))
+
+
+@router.get("/{project_id}/digital-twin", response_model=DigitalTwinResponse)
+def get_site_digital_twin(project_id: int, db: Session = Depends(get_db)):
+    """
+    GET /api/site-risk/{project_id}/digital-twin
+    Returns 2D/3D spatial Digital Twin building schematic structure and zone risk statuses.
+    """
+    try:
+        digital_twin_data = agent.get_digital_twin_spatial_data(db, project_id)
+        return digital_twin_data
+    except ValueError as ve:
+        raise HTTPException(status_code=404, detail=str(ve))
+
 
 
 @router.get("/{project_id}/risks", response_model=List[SiteRiskResponse])

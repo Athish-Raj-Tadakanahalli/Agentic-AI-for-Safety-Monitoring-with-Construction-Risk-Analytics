@@ -4,23 +4,30 @@ import {
   SiteRisk,
   SiteRiskScoreResponse,
   HeatmapMatrixResponse,
-  IngestSiteRiskPayload
+  IngestSiteRiskPayload,
+  DigitalTwinResponse
 } from '../types';
 import {
   getProjects,
   getSiteRiskScore,
   getSiteRiskHeatmap,
+  getDigitalTwinData,
   getSiteRisks,
   ingestSiteRisk,
-  updateRiskMitigationStatus
+  updateRiskMitigationStatus,
+  downloadPDFReport,
+  downloadCSVExport
 } from '../api/api';
 import { Navbar } from '../components/Navbar';
 import { MetricCard } from '../components/MetricCard';
+import { SiteDigitalTwinMap } from '../components/SiteDigitalTwinMap';
 import { RiskHeatmap } from '../components/RiskHeatmap';
 import { RiskCharts } from '../components/RiskCharts';
 import { ActiveRisksTable } from '../components/ActiveRisksTable';
 import { IngestDataModal } from '../components/IngestDataModal';
-import { AlertTriangle, ShieldCheck, MapPin, Gauge, RefreshCw } from 'lucide-react';
+import { AICopilotDrawer } from '../components/AICopilotDrawer';
+import { LiveAlertToast } from '../components/LiveAlertToast';
+import { AlertTriangle, ShieldCheck, MapPin, Gauge, RefreshCw, Download, FileSpreadsheet } from 'lucide-react';
 
 interface SiteRiskDashboardProps {
   activeTab: string;
@@ -33,9 +40,12 @@ export const SiteRiskDashboard: React.FC<SiteRiskDashboardProps> = ({ activeTab,
 
   const [scoreData, setScoreData] = useState<SiteRiskScoreResponse | null>(null);
   const [heatmapData, setHeatmapData] = useState<HeatmapMatrixResponse | null>(null);
+  const [digitalTwinData, setDigitalTwinData] = useState<DigitalTwinResponse | null>(null);
   const [risks, setRisks] = useState<SiteRisk[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [isIngestModalOpen, setIsIngestModalOpen] = useState<boolean>(false);
+  const [isCopilotOpen, setIsCopilotOpen] = useState<boolean>(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
 
   // Load project list on mount
@@ -58,13 +68,15 @@ export const SiteRiskDashboard: React.FC<SiteRiskDashboardProps> = ({ activeTab,
   const fetchDashboardData = useCallback(async () => {
     if (!selectedProjectId) return;
     try {
-      const [scoreRes, heatmapRes, risksRes] = await Promise.all([
+      const [scoreRes, heatmapRes, twinRes, risksRes] = await Promise.all([
         getSiteRiskScore(selectedProjectId),
         getSiteRiskHeatmap(selectedProjectId),
+        getDigitalTwinData(selectedProjectId),
         getSiteRisks(selectedProjectId)
       ]);
       setScoreData(scoreRes);
       setHeatmapData(heatmapRes);
+      setDigitalTwinData(twinRes);
       setRisks(risksRes);
       setLastRefreshed(new Date());
     } catch (err) {
@@ -106,6 +118,24 @@ export const SiteRiskDashboard: React.FC<SiteRiskDashboardProps> = ({ activeTab,
     }
   };
 
+  const handleDownloadPDF = async () => {
+    try {
+      await downloadPDFReport(selectedProjectId, 'executive');
+      setToastMessage('Site Risk Report PDF downloaded successfully.');
+    } catch (err) {
+      console.error('PDF download error:', err);
+    }
+  };
+
+  const handleDownloadCSV = async () => {
+    try {
+      await downloadCSVExport(selectedProjectId, 'hazards');
+      setToastMessage('Site Hazard Data CSV exported.');
+    } catch (err) {
+      console.error('CSV export error:', err);
+    }
+  };
+
   const getScoreBadgeVariant = (level?: string) => {
     switch (level?.toLowerCase()) {
       case 'critical':
@@ -120,7 +150,7 @@ export const SiteRiskDashboard: React.FC<SiteRiskDashboardProps> = ({ activeTab,
   };
 
   return (
-    <div className="min-h-screen flex flex-col transition-colors duration-300">
+    <div className="min-h-screen theme-bg flex flex-col transition-colors duration-300">
       {/* Top Navbar */}
       <Navbar
         projects={projects}
@@ -129,14 +159,8 @@ export const SiteRiskDashboard: React.FC<SiteRiskDashboardProps> = ({ activeTab,
         activeTab={activeTab}
         onTabChange={onTabChange}
         onOpenIngestModal={() => setIsIngestModalOpen(true)}
+        onOpenCopilot={() => setIsCopilotOpen(true)}
       />
-
-      {/* Tab Notice for Future Milestones */}
-      {activeTab !== 'site-risk' && (
-        <div className="bg-cyan-500/10 border-b border-cyan-500/30 py-2.5 px-4 text-center text-xs text-cyan-600 dark:text-cyan-300 font-semibold">
-          Note: You are currently viewing a tab placeholder. <strong>Site Risk Agent (Milestone 1)</strong> is active below.
-        </div>
-      )}
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -152,11 +176,30 @@ export const SiteRiskDashboard: React.FC<SiteRiskDashboardProps> = ({ activeTab,
             </p>
           </div>
 
-          <div className="flex items-center space-x-3">
-            <span className="text-xs text-slate-500 dark:text-slate-400 font-mono flex items-center space-x-1">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-mono hidden md:flex items-center space-x-1">
               <RefreshCw className={`w-3 h-3 text-slate-400 ${loading ? 'animate-spin text-cyan-500' : ''}`} />
               <span>Refreshed: {lastRefreshed.toLocaleTimeString()}</span>
             </span>
+
+            <button
+              onClick={handleDownloadPDF}
+              className="px-3 py-1.5 text-xs font-bold rounded-xl theme-card-bg border hover:border-emerald-500/50 transition flex items-center space-x-1.5 shadow-sm"
+              title="Download Site Risk PDF Report"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-500" />
+              <span className="hidden sm:inline">PDF Report</span>
+            </button>
+
+            <button
+              onClick={handleDownloadCSV}
+              className="px-3 py-1.5 text-xs font-bold rounded-xl theme-card-bg border hover:border-cyan-500/50 transition flex items-center space-x-1.5 shadow-sm"
+              title="Export Hazard Data CSV"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-cyan-500" />
+              <span className="hidden sm:inline">Export CSV</span>
+            </button>
+
             <button
               onClick={() => fetchDashboardData()}
               className="p-2 rounded-xl theme-input border transition-all duration-200 hover:border-cyan-500 shadow-sm"
@@ -206,7 +249,10 @@ export const SiteRiskDashboard: React.FC<SiteRiskDashboardProps> = ({ activeTab,
           />
         </div>
 
-        {/* 2. 5x5 Probability x Impact Risk Heatmap */}
+        {/* 2. Interactive 3D BIM / 2D Site Spatial Map (Digital Twin) */}
+        <SiteDigitalTwinMap data={digitalTwinData} onToggleMitigation={handleToggleMitigation} />
+
+        {/* 3. 5x5 Probability x Impact Risk Heatmap */}
         <RiskHeatmap data={heatmapData} />
 
         {/* 3. Recharts Visualizations */}
@@ -224,9 +270,24 @@ export const SiteRiskDashboard: React.FC<SiteRiskDashboardProps> = ({ activeTab,
         onIngest={handleIngestHazard}
       />
 
+      {/* AI Copilot Drawer */}
+      <AICopilotDrawer
+        projectId={selectedProjectId}
+        isOpen={isCopilotOpen}
+        onClose={() => setIsCopilotOpen(false)}
+      />
+
+      {/* Live Alert Toast */}
+      {toastMessage && (
+        <LiveAlertToast
+          message={toastMessage}
+          onClose={() => setToastMessage(null)}
+        />
+      )}
+
       {/* Footer */}
       <footer className="border-t border-slate-200 dark:border-slate-800/80 py-4 text-center text-xs text-slate-500 dark:text-slate-400 mt-auto">
-        BuildSure AI — Agentic Construction Risk Intelligence Platform • Milestone 1 (Site Risk Agent)
+        BuildSure AI — Agentic Construction Risk Intelligence Platform
       </footer>
     </div>
   );

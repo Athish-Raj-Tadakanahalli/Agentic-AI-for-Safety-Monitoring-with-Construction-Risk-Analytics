@@ -11,10 +11,12 @@ services:
     environment:
       - DATABASE_URL=postgresql://buildsure:buildsure_pass@db:5432/buildsure_db
       - REDIS_URL=redis://redis:6379/0
+      - OLLAMA_BASE_URL=http://ollama:11434
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     depends_on:
       - db
       - redis
+      - ollama
     restart: always
 
   frontend:
@@ -50,5 +52,15 @@ services:
       - "6379:6379"
     restart: always
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: buildsure_ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: always
+
 volumes:
   postgres_data:
+  ollama_data:

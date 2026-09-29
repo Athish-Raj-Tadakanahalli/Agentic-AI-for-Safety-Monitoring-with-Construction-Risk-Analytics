@@ -84,9 +84,16 @@
   border-color: var(--border-color-hover);
 }
 
+.theme-bg {
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
 .theme-card-bg {
   background-color: var(--bg-card-solid);
-  transition: background-color 0.3s ease;
+  border-color: var(--border-color);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .theme-input {

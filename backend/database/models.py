@@ -71,8 +71,12 @@ class ComplianceCheck(Base):
 
     compliance_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     project_id = Column(Integer, ForeignKey("projects.project_id"), nullable=False)
-    regulation_name = Column(String(255), nullable=False) # OSHA, building codes, environmental
-    compliance_status = Column(String(50), nullable=False)
+    regulation_name = Column(String(255), nullable=False) # OSHA 1926.501, ISO 45001, etc.
+    category = Column(String(100), nullable=True, default="Fall Protection") # Fall Protection, PPE, Structural, Environmental, Electrical
+    compliance_status = Column(String(50), nullable=False) # compliant, non_compliant, pending_review
+    severity = Column(String(50), nullable=True, default="medium") # low, medium, high, critical
+    description = Column(Text, nullable=True)
+    remediation_plan = Column(Text, nullable=True)
     checked_at = Column(DateTime, default=datetime.utcnow)
 
     project = relationship("Project", back_populates="compliance_checks")
@@ -83,9 +87,14 @@ class InsuranceCase(Base):
 
     case_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     project_id = Column(Integer, ForeignKey("projects.project_id"), nullable=False)
-    claim_type = Column(String(100), nullable=False)
-    risk_score = Column(Numeric(5, 2), nullable=True)
-    status = Column(String(50), default="open")
+    claim_type = Column(String(100), nullable=False) # Workers Compensation, General Liability, Property Damage, Equipment Breakdown, Environmental
+    severity = Column(String(50), nullable=True, default="medium") # low, medium, high, critical
+    estimated_exposure = Column(Numeric(12, 2), nullable=True, default=0.0)
+    risk_score = Column(Numeric(5, 2), nullable=True) # 0-100 score
+    claim_probability = Column(Numeric(5, 2), nullable=True, default=50.0) # 0-100%
+    status = Column(String(50), default="open") # open, under_investigation, mitigated, closed
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     project = relationship("Project", back_populates="insurance_cases")
 

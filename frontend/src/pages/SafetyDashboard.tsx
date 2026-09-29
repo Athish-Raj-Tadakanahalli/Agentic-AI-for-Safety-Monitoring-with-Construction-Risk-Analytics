@@ -18,16 +18,21 @@ import {
   ingestPPEViolation,
   logSafetyIncident,
   getNotificationLogs,
-  testNotificationChannel
+  testNotificationChannel,
+  downloadPDFReport,
+  downloadCSVExport
 } from '../api/api';
 import { Navbar } from '../components/Navbar';
 import { MetricCard } from '../components/MetricCard';
+import { CVCameraStreamSimulator } from '../components/CVCameraStreamSimulator';
 import { PPETypeBreakdown } from '../components/PPETypeBreakdown';
 import { AccidentZonesAnalytics } from '../components/AccidentZonesAnalytics';
 import { SimulatePPEModal } from '../components/SimulatePPEModal';
 import { ReportIncidentModal } from '../components/ReportIncidentModal';
 import { NotificationFeed } from '../components/NotificationFeed';
-import { HardHat, ShieldCheck, AlertTriangle, Users, Camera, Clock, RefreshCw, ShieldAlert, Radio } from 'lucide-react';
+import { AICopilotDrawer } from '../components/AICopilotDrawer';
+import { LiveAlertToast } from '../components/LiveAlertToast';
+import { HardHat, ShieldCheck, AlertTriangle, Users, Camera, Clock, RefreshCw, ShieldAlert, Radio, Download, FileSpreadsheet } from 'lucide-react';
 
 interface SafetyDashboardProps {
   activeTab: string;
@@ -46,6 +51,8 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ activeTab, onT
   const [loading, setLoading] = useState<boolean>(true);
   const [isSimulateModalOpen, setIsSimulateModalOpen] = useState<boolean>(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState<boolean>(false);
+  const [isCopilotOpen, setIsCopilotOpen] = useState<boolean>(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
 
   useEffect(() => {
@@ -124,6 +131,24 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ activeTab, onT
     }
   };
 
+  const handleDownloadPDF = async () => {
+    try {
+      await downloadPDFReport(selectedProjectId, 'executive');
+      setToastMessage('Worker Safety Audit PDF downloaded successfully.');
+    } catch (err) {
+      console.error('PDF download error:', err);
+    }
+  };
+
+  const handleDownloadCSV = async () => {
+    try {
+      await downloadCSVExport(selectedProjectId, 'ppe');
+      setToastMessage('Safety Violation Data CSV exported.');
+    } catch (err) {
+      console.error('CSV export error:', err);
+    }
+  };
+
   const getRatingBadge = (rating?: string) => {
     switch (rating?.toLowerCase()) {
       case 'excellent':
@@ -139,7 +164,7 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ activeTab, onT
   };
 
   return (
-    <div className="min-h-screen flex flex-col transition-colors duration-300">
+    <div className="min-h-screen theme-bg flex flex-col transition-colors duration-300">
       <Navbar
         projects={projects}
         selectedProjectId={selectedProjectId}
@@ -147,6 +172,7 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ activeTab, onT
         activeTab={activeTab}
         onTabChange={onTabChange}
         onOpenIngestModal={() => setIsSimulateModalOpen(true)}
+        onOpenCopilot={() => setIsCopilotOpen(true)}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -157,8 +183,8 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ activeTab, onT
               <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center space-x-2">
                 <span>Safety Agent — Worker Protection Engine</span>
               </h1>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-bold border border-cyan-500/30 font-mono uppercase">
-                Milestone 2 Active
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/30 font-mono uppercase">
+                CV PPE Engine Active
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
@@ -189,6 +215,24 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ activeTab, onT
             >
               <AlertTriangle className="w-3.5 h-3.5" />
               <span>Report Incident</span>
+            </button>
+
+            <button
+              onClick={handleDownloadPDF}
+              className="px-3 py-1.5 text-xs font-bold rounded-xl theme-card-bg border hover:border-emerald-500/50 transition flex items-center space-x-1.5 shadow-sm"
+              title="Download Worker Safety PDF Report"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-500" />
+              <span className="hidden sm:inline">PDF</span>
+            </button>
+
+            <button
+              onClick={handleDownloadCSV}
+              className="px-3 py-1.5 text-xs font-bold rounded-xl theme-card-bg border hover:border-cyan-500/50 transition flex items-center space-x-1.5 shadow-sm"
+              title="Export Safety Data CSV"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-cyan-500" />
+              <span className="hidden sm:inline">CSV</span>
             </button>
           </div>
         </div>
@@ -232,7 +276,13 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ activeTab, onT
           />
         </div>
 
-        {/* 2. PPE Category Compliance Breakdown */}
+        {/* 2. YOLO Computer Vision Camera Stream Simulator */}
+        <CVCameraStreamSimulator
+          projectId={selectedProjectId}
+          onIngestViolation={handleIngestPPE}
+        />
+
+        {/* 3. PPE Category Compliance Breakdown */}
         <PPETypeBreakdown complianceData={complianceData} />
 
         {/* 3. Accident Zones & Behavioral Analytics */}
@@ -333,8 +383,23 @@ export const SafetyDashboard: React.FC<SafetyDashboardProps> = ({ activeTab, onT
         onReport={handleReportIncident}
       />
 
+      {/* AI Copilot Drawer */}
+      <AICopilotDrawer
+        projectId={selectedProjectId}
+        isOpen={isCopilotOpen}
+        onClose={() => setIsCopilotOpen(false)}
+      />
+
+      {/* Live Alert Toast */}
+      {toastMessage && (
+        <LiveAlertToast
+          message={toastMessage}
+          onClose={() => setToastMessage(null)}
+        />
+      )}
+
       <footer className="border-t border-slate-200 dark:border-slate-800 py-4 text-center text-xs text-slate-500 mt-auto">
-        BuildSure AI — Agentic Construction Risk Intelligence Platform • Milestone 2 (Safety Agent & Multi-Channel Escalation Engine)
+        BuildSure AI — Agentic Construction Risk Intelligence Platform
       </footer>
     </div>
   );

@@ -6,7 +6,7 @@ from datetime import date, datetime, timedelta
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from backend.database.connection import engine, Base, SessionLocal, ensure_schema_migrations
-from backend.database.models import Project, SiteRisk, PPEViolation, SafetyIncident, Alert
+from backend.database.models import Project, SiteRisk, PPEViolation, SafetyIncident, Alert, ComplianceCheck, InsuranceCase
 
 def seed_database():
     """Seed database with realistic construction project data, site risks, PPE events, and safety incidents"""
@@ -316,6 +316,161 @@ def seed_database():
             db.add_all(alerts)
             db.commit()
             print(f"Seeded {len(alerts)} notification escalation logs.")
+
+        # 6. Compliance Checks (Milestone 3)
+        existing_compliance = db.query(ComplianceCheck).count()
+        if existing_compliance == 0:
+            print("Seeding Milestone 3 compliance checks...")
+            checks = [
+                # Project 1
+                ComplianceCheck(
+                    project_id=p1.project_id,
+                    regulation_name="OSHA 1926.501 - Fall Protection Standard",
+                    category="Fall Protection",
+                    compliance_status="non_compliant",
+                    severity="critical",
+                    description="Unsecured perimeter safety netting at 32nd floor level.",
+                    remediation_plan="Install compliant guardrails and safety containment netting.",
+                    checked_at=datetime.utcnow() - timedelta(hours=3)
+                ),
+                ComplianceCheck(
+                    project_id=p1.project_id,
+                    regulation_name="OSHA 1926.100 - Head & PPE Mandatory Usage Standard",
+                    category="PPE Adherence",
+                    compliance_status="non_compliant",
+                    severity="high",
+                    description="CV stream detected 9 PPE violations in Scaffolding Tower B.",
+                    remediation_plan="Mandate hard hat tethering and conduct shift safety briefing.",
+                    checked_at=datetime.utcnow() - timedelta(hours=6)
+                ),
+                ComplianceCheck(
+                    project_id=p1.project_id,
+                    regulation_name="OSHA 1926.451 - Scaffolding & Structural Integrity",
+                    category="Structural & Scaffold",
+                    compliance_status="compliant",
+                    severity="low",
+                    description="Scaffold staging platform verified green-tagged by competent person.",
+                    remediation_plan="Maintain weekly scaffold inspection log.",
+                    checked_at=datetime.utcnow() - timedelta(days=1)
+                ),
+                ComplianceCheck(
+                    project_id=p1.project_id,
+                    regulation_name="OSHA 1926.404 - Electrical Grounding Safety",
+                    category="Electrical Safety",
+                    compliance_status="compliant",
+                    severity="low",
+                    description="GFCI breakers operational across main distribution panels.",
+                    remediation_plan="Conduct monthly push-button testing.",
+                    checked_at=datetime.utcnow() - timedelta(days=2)
+                ),
+
+                # Project 2
+                ComplianceCheck(
+                    project_id=p2.project_id,
+                    regulation_name="OSHA 1926.55 - Environmental & Tunnel Ventilation",
+                    category="Environmental & Hazmat",
+                    compliance_status="non_compliant",
+                    severity="critical",
+                    description="Subterranean airflow below mandatory OSHA CFM threshold.",
+                    remediation_plan="Deploy auxiliary high-powered exhaust fans in Shaft 3.",
+                    checked_at=datetime.utcnow() - timedelta(hours=2)
+                ),
+                ComplianceCheck(
+                    project_id=p2.project_id,
+                    regulation_name="OSHA 1926.651 - Excavation & Trenching Safety",
+                    category="Structural & Scaffold",
+                    compliance_status="non_compliant",
+                    severity="high",
+                    description="Groundwater infiltration threatening trench wall stability.",
+                    remediation_plan="Install dewatering pumps and trench shoring shields.",
+                    checked_at=datetime.utcnow() - timedelta(hours=5)
+                ),
+
+                # Project 3
+                ComplianceCheck(
+                    project_id=p3.project_id,
+                    regulation_name="OSHA 1926.602 - Heavy Equipment Operations",
+                    category="Structural & Scaffold",
+                    compliance_status="compliant",
+                    severity="low",
+                    description="Forklift and yard crane backup alarms fully operational.",
+                    remediation_plan="Continue daily pre-shift equipment check sheets.",
+                    checked_at=datetime.utcnow() - timedelta(days=1)
+                )
+            ]
+            db.add_all(checks)
+            db.commit()
+            print(f"Seeded {len(checks)} regulatory compliance checks.")
+
+        # 7. Insurance Cases (Milestone 3)
+        existing_insurance = db.query(InsuranceCase).count()
+        if existing_insurance == 0:
+            print("Seeding Milestone 3 insurance cases & exposures...")
+            cases = [
+                # Project 1
+                InsuranceCase(
+                    project_id=p1.project_id,
+                    claim_type="General Liability",
+                    severity="critical",
+                    estimated_exposure=250000.0,
+                    risk_score=78.5,
+                    claim_probability=72.0,
+                    status="open",
+                    description="High altitude perimeter fall hazard exposure on 32nd floor staging.",
+                    created_at=datetime.utcnow() - timedelta(hours=4)
+                ),
+                InsuranceCase(
+                    project_id=p1.project_id,
+                    claim_type="Workers Compensation",
+                    severity="high",
+                    estimated_exposure=85000.0,
+                    risk_score=64.0,
+                    claim_probability=58.0,
+                    status="under_investigation",
+                    description="Repeat PPE violations and near-miss scaffold wrench drop event.",
+                    created_at=datetime.utcnow() - timedelta(hours=8)
+                ),
+
+                # Project 2
+                InsuranceCase(
+                    project_id=p2.project_id,
+                    claim_type="Property Damage",
+                    severity="critical",
+                    estimated_exposure=320000.0,
+                    risk_score=85.0,
+                    claim_probability=81.0,
+                    status="open",
+                    description="Subterranean tunnel shaft groundwater infiltration and retaining wall collapse risk.",
+                    created_at=datetime.utcnow() - timedelta(hours=2)
+                ),
+                InsuranceCase(
+                    project_id=p2.project_id,
+                    claim_type="Workers Compensation",
+                    severity="high",
+                    estimated_exposure=110000.0,
+                    risk_score=70.0,
+                    claim_probability=65.0,
+                    status="open",
+                    description="Falling rock fragment incident in Tunnel Shaft #3.",
+                    created_at=datetime.utcnow() - timedelta(hours=6)
+                ),
+
+                # Project 3
+                InsuranceCase(
+                    project_id=p3.project_id,
+                    claim_type="Equipment Breakdown",
+                    severity="low",
+                    estimated_exposure=15000.0,
+                    risk_score=22.0,
+                    claim_probability=18.0,
+                    status="mitigated",
+                    description="Dock forklift barrier scuffing event.",
+                    created_at=datetime.utcnow() - timedelta(days=2)
+                )
+            ]
+            db.add_all(cases)
+            db.commit()
+            print(f"Seeded {len(cases)} insurance exposure cases.")
 
         print("Database seeding completed successfully!")
 

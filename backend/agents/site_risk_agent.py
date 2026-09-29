@@ -7,7 +7,10 @@ from backend.schemas.site_risk_schemas import (
     SiteRiskScoreResponse,
     HeatmapMatrixResponse,
     HeatmapCell,
-    ZoneRiskSummary
+    ZoneRiskSummary,
+    SiteRiskResponse,
+    DigitalTwinZoneItem,
+    DigitalTwinResponse
 )
 
 class SiteRiskAgent:
@@ -229,4 +232,174 @@ class SiteRiskAgent:
             residual_grid=residual_grid,
             inherent_cells=build_cell_list(inherent_grid, inherent_cell_dict),
             residual_cells=build_cell_list(residual_grid, residual_cell_dict)
+        )
+
+    def get_digital_twin_spatial_data(self, db: Session, project_id: int) -> DigitalTwinResponse:
+        """
+        Generates 2D/3D Digital Twin spatial structure and zone risk statuses.
+        Maps live unmitigated site risks into specific building zones.
+        """
+        project = db.query(Project).filter(Project.project_id == project_id).first()
+        if not project:
+            raise ValueError(f"Project with ID {project_id} not found.")
+
+        # Query all active (unmitigated) risks for project
+        unmitigated_risks = db.query(SiteRisk).filter(
+            SiteRisk.project_id == project_id,
+            SiteRisk.mitigated == False
+        ).all()
+
+        # Define 8 spatial Digital Twin zones
+        zones_definition = [
+            {
+                "zone_id": "tower_slab_high",
+                "zone_name": "High-Altitude Tower Slab (Floor 14-18)",
+                "category": "high_altitude",
+                "floor_level": "Floor 14-18",
+                "assigned_supervisor": "Eng. Marcus Vance",
+                "cctv_camera_id": "CAM-01-HIGH",
+                "keywords": ["high-altitude", "slab", "tower", "floor", "14"]
+            },
+            {
+                "zone_id": "scaffolding_tower",
+                "zone_name": "North Scaffolding Elevation Structure",
+                "category": "high_altitude",
+                "floor_level": "Elevation 15m",
+                "assigned_supervisor": "Capt. Sarah Jenkins",
+                "cctv_camera_id": "CAM-02-SCAFFOLD",
+                "keywords": ["scaffold", "scaffolding", "elevation", "north"]
+            },
+            {
+                "zone_id": "excavation_pit",
+                "zone_name": "Foundation Excavation & Shoring Pit",
+                "category": "excavation",
+                "floor_level": "Basement Level -2",
+                "assigned_supervisor": "Inspector Dave Miller",
+                "cctv_camera_id": "CAM-03-PIT",
+                "keywords": ["excavation", "pit", "trench", "foundation", "shoring"]
+            },
+            {
+                "zone_id": "crane_yard",
+                "zone_name": "Tower Crane & Heavy Rigging Yard",
+                "category": "heavy_equipment",
+                "floor_level": "Ground Level North",
+                "assigned_supervisor": "Rigging Supt. Tom Hayes",
+                "cctv_camera_id": "CAM-04-CRANE",
+                "keywords": ["crane", "rigging", "hoist", "heavy equipment"]
+            },
+            {
+                "zone_id": "electrical_plant",
+                "zone_name": "High-Voltage Electrical Plant Room",
+                "category": "electrical",
+                "floor_level": "Utility Level B1",
+                "assigned_supervisor": "Elec. Supt. Aris Thorne",
+                "cctv_camera_id": "CAM-05-ELEC",
+                "keywords": ["electrical", "substation", "high-voltage", "cable", "wiring"]
+            },
+            {
+                "zone_id": "gate_turnstile",
+                "zone_name": "Main Site Access & Badge Turnstiles",
+                "category": "access",
+                "floor_level": "Perimeter Entry Gate",
+                "assigned_supervisor": "Security Chief Ray Lopez",
+                "cctv_camera_id": "CAM-06-GATE",
+                "keywords": ["gate", "turnstile", "entry", "badge", "access"]
+            },
+            {
+                "zone_id": "storage_bay",
+                "zone_name": "Chemical & Hazardous Material Storage",
+                "category": "storage",
+                "floor_level": "Ground Storage West",
+                "assigned_supervisor": "Hazmat Lead Elena Rostova",
+                "cctv_camera_id": "CAM-07-STORAGE",
+                "keywords": ["storage", "chemical", "hazardous", "fuel", "material"]
+            },
+            {
+                "zone_id": "perimeter_wall",
+                "zone_name": "East Perimeter Retaining Structure",
+                "category": "structural",
+                "floor_level": "Ground Perimeter East",
+                "assigned_supervisor": "Civil Inspector Carlos Ruiz",
+                "cctv_camera_id": "CAM-08-WALL",
+                "keywords": ["perimeter", "wall", "fence", "retaining", "boundary"]
+            }
+        ]
+
+        zone_items: List[DigitalTwinZoneItem] = []
+        total_active_hazards = len(unmitigated_risks)
+        critical_zones_count = 0
+
+        for zdef in zones_definition:
+            # Find matching risks for this spatial zone
+            matched_risks: List[SiteRisk] = []
+            for r in unmitigated_risks:
+                z_lower = (r.zone or "").lower()
+                desc_lower = (r.description or "").lower()
+                r_type = (r.risk_type or "").lower()
+                
+                if any(kw in z_lower or kw in desc_lower or kw in r_type for kw in zdef["keywords"]):
+                    matched_risks.append(r)
+
+            # If no exact keyword match, assign unmatched risks gracefully to general zones
+            if zdef["zone_id"] == "tower_slab_high" and not matched_risks:
+                # Catch any unmapped fall/high altitude risks
+                matched_risks = [r for r in unmitigated_risks if r.risk_type in ["fall", "structural"] and r not in [item for z in zone_items for item in z.active_risks]]
+
+            # Calculate zonal risk score & status
+            z_weighted_score = 0.0
+            has_critical = False
+            has_high = False
+            has_medium = False
+
+            for r in matched_risks:
+                sev = r.severity.lower()
+                wt = self.SEVERITY_WEIGHTS.get(sev, 1.0)
+                z_weighted_score += (r.probability * r.impact) * (wt / 2.0)
+                if sev == "critical":
+                    has_critical = True
+                elif sev == "high":
+                    has_high = True
+                elif sev == "medium":
+                    has_medium = True
+
+            norm_z_score = round(min(100.0, (z_weighted_score / 40.0) * 100.0), 1)
+
+            if norm_z_score >= 50.0 or has_critical or has_high:
+                r_level = "Critical" if (has_critical or norm_z_score >= 75) else "High"
+                color = "red"
+                critical_zones_count += 1
+            elif norm_z_score >= 20.0 or has_medium or len(matched_risks) > 0:
+                r_level = "Medium"
+                color = "amber"
+            else:
+                r_level = "Low"
+                color = "green"
+
+            # Convert ORM objects to response models
+            risk_models = [
+                SiteRiskResponse.model_validate(r) for r in matched_risks
+            ]
+
+            zone_items.append(
+                DigitalTwinZoneItem(
+                    zone_id=zdef["zone_id"],
+                    zone_name=zdef["zone_name"],
+                    category=zdef["category"],
+                    risk_score=norm_z_score,
+                    risk_level=r_level,
+                    color_status=color,
+                    active_hazards_count=len(matched_risks),
+                    active_risks=risk_models,
+                    assigned_supervisor=zdef["assigned_supervisor"],
+                    cctv_camera_id=zdef["cctv_camera_id"],
+                    floor_level=zdef["floor_level"]
+                )
+            )
+
+        return DigitalTwinResponse(
+            project_id=project.project_id,
+            project_name=project.project_name,
+            total_active_hazards=total_active_hazards,
+            critical_zones_count=critical_zones_count,
+            zones=zone_items
         )

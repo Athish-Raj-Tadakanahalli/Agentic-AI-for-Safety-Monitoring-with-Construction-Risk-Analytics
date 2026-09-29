@@ -53,3 +53,27 @@ def ensure_schema_migrations():
             if "message" not in cols:
                 conn.execute(text("ALTER TABLE alerts ADD COLUMN message TEXT"))
                 conn.commit()
+        if "compliance_checks" in tables:
+            cols = [c["name"] for c in inspector.get_columns("compliance_checks")]
+            if "category" not in cols:
+                conn.execute(text("ALTER TABLE compliance_checks ADD COLUMN category VARCHAR(100) DEFAULT 'Fall Protection'"))
+            if "severity" not in cols:
+                conn.execute(text("ALTER TABLE compliance_checks ADD COLUMN severity VARCHAR(50) DEFAULT 'medium'"))
+            if "description" not in cols:
+                conn.execute(text("ALTER TABLE compliance_checks ADD COLUMN description TEXT"))
+            if "remediation_plan" not in cols:
+                conn.execute(text("ALTER TABLE compliance_checks ADD COLUMN remediation_plan TEXT"))
+            conn.commit()
+        if "insurance_cases" in tables:
+            cols = [c["name"] for c in inspector.get_columns("insurance_cases")]
+            if "severity" not in cols:
+                conn.execute(text("ALTER TABLE insurance_cases ADD COLUMN severity VARCHAR(50) DEFAULT 'medium'"))
+            if "estimated_exposure" not in cols:
+                conn.execute(text("ALTER TABLE insurance_cases ADD COLUMN estimated_exposure NUMERIC(12, 2) DEFAULT 0.0"))
+            if "claim_probability" not in cols:
+                conn.execute(text("ALTER TABLE insurance_cases ADD COLUMN claim_probability NUMERIC(5, 2) DEFAULT 50.0"))
+            if "description" not in cols:
+                conn.execute(text("ALTER TABLE insurance_cases ADD COLUMN description TEXT"))
+            if "created_at" not in cols:
+                conn.execute(text("ALTER TABLE insurance_cases ADD COLUMN created_at DATETIME"))
+            conn.commit()

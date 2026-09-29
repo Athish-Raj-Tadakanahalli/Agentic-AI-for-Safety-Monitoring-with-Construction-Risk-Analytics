@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldAlert, HardHat, FileCheck2, ShieldCheck, LayoutDashboard, Radio, Sun, Moon } from 'lucide-react';
+import { ShieldAlert, HardHat, FileCheck2, ShieldCheck, LayoutDashboard, Radio, Sun, Moon, Bot } from 'lucide-react';
 import { Project } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { BuildSureLogo } from './BuildSureLogo';
@@ -11,6 +11,7 @@ interface NavbarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   onOpenIngestModal: () => void;
+  onOpenCopilot?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -20,16 +21,17 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   onTabChange,
   onOpenIngestModal,
+  onOpenCopilot,
 }) => {
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === 'dark';
 
   const tabs = [
-    { id: 'site-risk', label: 'Site Risk Agent', icon: ShieldAlert },
-    { id: 'safety', label: 'Safety Agent', icon: HardHat },
-    { id: 'compliance', label: 'Compliance Agent', icon: FileCheck2, badge: 'M3' },
-    { id: 'insurance', label: 'Insurance Agent', icon: ShieldCheck, badge: 'M3' },
-    { id: 'command-center', label: 'Command Center', icon: LayoutDashboard, badge: 'M4' },
+    { id: 'command-center', label: 'Command Center', icon: LayoutDashboard, badge: 'Unified' },
+    { id: 'site-risk', label: 'Site Risk Agent', icon: ShieldAlert, badge: 'Live' },
+    { id: 'safety', label: 'Safety Agent', icon: HardHat, badge: 'CV' },
+    { id: 'compliance', label: 'Compliance Agent', icon: FileCheck2, badge: 'OSHA' },
+    { id: 'insurance', label: 'Insurance Agent', icon: ShieldCheck, badge: 'Risk' },
   ];
 
   return (
@@ -39,7 +41,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Enhanced BuildSure AI Logo Component */}
           <BuildSureLogo size="md" showSubtext={true} />
 
-          {/* Right Action Bar: Live Stream Badge, Project Select, Theme Toggle & Ingest Button */}
+          {/* Right Action Bar: Live Stream Badge, Project Select, Theme Toggle, Copilot & Ingest Button */}
           <div className="flex items-center space-x-3 sm:space-x-4">
             {/* Live Indicator */}
             <div className="hidden lg:flex items-center space-x-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 text-xs font-semibold">
@@ -64,6 +66,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                 ))}
               </select>
             </div>
+
+            {/* AI Copilot Button */}
+            {onOpenCopilot && (
+              <button
+                onClick={onOpenCopilot}
+                className="px-3 py-1.5 text-xs font-bold rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 transition flex items-center space-x-1.5"
+                title="Open AI Safety Copilot Assistant"
+              >
+                <Bot className="w-4 h-4" />
+                <span className="hidden sm:inline">AI Copilot</span>
+              </button>
+            )}
 
             {/* Simple Clean Theme Toggle: Dark Mode <-> Light/White Mode */}
             <button

@@ -36,11 +36,11 @@ def run_app():
         shell=True
     )
     
-    print("\n" + "─" * 65)
-    print("  🚀 Web Application running at:  http://localhost:5173")
-    print("  ⚙️  FastAPI Backend running at:  http://localhost:8000")
-    print("  📚  Swagger API Docs at:        http://localhost:8000/docs")
-    print("─" * 65 + "\n")
+    print("\n" + "-" * 65)
+    print("   Web Application running at:  http://localhost:5173")
+    print("   FastAPI Backend running at:  http://localhost:8000")
+    print("   Swagger API Docs at:        http://localhost:8000/docs")
+    print("-" * 65 + "\n")
     
     # Open browser after 2 seconds
     time.sleep(2)
@@ -49,7 +49,7 @@ def run_app():
     # Start Backend Uvicorn server in main thread
     import uvicorn
     try:
-        uvicorn.run("backend.main:app", host="127.0.0.1", port=8000, reload=True)
+        uvicorn.run("backend.main:app", host="127.0.0.1", port=8000, reload=True, access_log=False)
     except KeyboardInterrupt:
         print("\nShutting down BuildSure AI services...")
         frontend_process.terminate()

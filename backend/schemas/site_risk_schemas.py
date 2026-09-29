@@ -82,3 +82,24 @@ class HeatmapMatrixResponse(BaseModel):
     residual_grid: List[List[int]]   # 5x5 matrix counts after mitigation
     inherent_cells: List[HeatmapCell]
     residual_cells: List[HeatmapCell]
+
+# Digital Twin Schemas
+class DigitalTwinZoneItem(BaseModel):
+    zone_id: str
+    zone_name: str
+    category: str
+    risk_score: float
+    risk_level: str
+    color_status: str  # "red", "amber", "green"
+    active_hazards_count: int
+    active_risks: List[SiteRiskResponse]
+    assigned_supervisor: str
+    cctv_camera_id: str
+    floor_level: Optional[str] = None
+
+class DigitalTwinResponse(BaseModel):
+    project_id: int
+    project_name: str
+    total_active_hazards: int
+    critical_zones_count: int
+    zones: List[DigitalTwinZoneItem]
